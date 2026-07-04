@@ -13,6 +13,8 @@ This project documents my journey in analyzing stc tv platform data, transformin
 - /scripts: Contains structured SQL queries and Python modeling scripts.
 - /visuals: Visualizations and dashboard screenshots.
 
+- Note: The uploaded dataset is a sample for demonstration due to file size limits.
+
 ## 🚀 Key Achievements
 - Analyzed subscriber behavior and identified a segment of 62% of low-engagement users.
 - Built a predictive model to forecast peak viewership periods (Fridays and Mondays).
