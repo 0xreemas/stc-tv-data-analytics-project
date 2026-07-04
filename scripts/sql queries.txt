@@ -1,0 +1,39 @@
+## ⚙️ Phase 2: Advanced SQL & Data Warehousing (مستودع البيانات والاستعلام المتقدم)
+في هذه المرحلة، تم ترحيل البيانات المجهزة ونقلها إلى سيرفر PostgreSQL لبناء البنية التحتية، وإجراء العمليات الحسابية المعقدة لضمان استقرار الأداء وسرعة الاستجابة.
+### 1️⃣ تهيئة بيئة العمل وبناء مستودع البيانات (Database Schema & Ingestion)
+ * الشرح: كتابة استعلامات التعريف (DDL) لإنشاء الجداول الأساسية وتحديد أنواع البيانات الصحيحة لضمان سلامة الهيكل وسرعة معالجة حجم البيانات الضخمة.
+CREATE TABLE viewership_fact (
+    user_id INT,
+    program_name VARCHAR(255),
+    duration_seconds NUMERIC,
+    view_date DATE,
+    device_type VARCHAR(50)
+);
+
+###2️⃣ تحليل سلوك المستخدمين باستخدام دوال النوافذ (Advanced Window Functions)
+ * الشرح: الاعتماد على دالة DENSE_RANK() OVER مقترنة بـ PARTITION BY لتصنيف وترتيب البرامج تنازلياً حسب الأعلى مشاهدة بشكل مستقل لكل فئة محتوى (أفلام/مسلسلات).
+WITH ranked_programs AS (
+    SELECT 
+        p.program_class AS "فئة_البرنامج",
+        p.program_name AS "اسم_البرنامج",
+        ROUND(SUM(v.duration_seconds) / 3600.0, 2) AS "إجمالي_الساعات",
+        DENSE_RANK() OVER (
+            PARTITION BY p.program_class 
+            ORDER BY SUM(v.duration_seconds) DESC
+ ) AS "الترتيب_داخل_الفئة"
+    FROM viewership_fact v
+    JOIN programs_dim p ON v.program_name = p.program_name
+    GROUP BY p.program_class, p.program_name
+)
+SELECT * FROM ranked_programs WHERE "الترتيب_داخل_الفئة" <= 3;
+
+###3️⃣ بناء طبقة المستندات الافتراضية للربط الذكي (Database Views Layer)
+ * الشرح: تحويل الاستعلامات المعقدة ودوال النوافذ إلى مستندات عرض افتراضية ثابتة (Views) داخل السيرفر لرفع كفاءة تجميع المؤشرات وفصل العمليات الحسابية الثقيلة عن أدوات العرض.
+CREATE VIEW v_weekly_trends AS
+SELECT 
+    EXTRACT(ISODOW FROM view_date) AS "ترتيب_اليوم",
+    TO_CHAR(view_date, 'Day') AS "يوم_الأسبوع",
+    ROUND(SUM(duration_seconds) / 3600.0, 2) AS "إجمالي_الساعات"
+FROM viewership_fact
+GROUP BY EXTRACT(ISODOW FROM view_date), TO_CHAR(view_date, 'Day')
+ORDER BY "ترتيب_اليوم";
